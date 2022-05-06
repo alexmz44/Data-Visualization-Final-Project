@@ -1,0 +1,178 @@
+---
+title: "Real Data Visualization Final"
+author: "Alexander Martinez"
+date: "5/5/2022"
+output:
+  html_document: default
+  word_document: default
+  pdf_document: default
+---
+
+## Introduction
+  The Housing Market has been in a wild state, the last 2 years or so in Phoenix, Arizona. I have been looking for a place to live for the next few years, and it is the same situation with any residency near the downtown area. It is the seller's market right now; houses are being sold within a week of arriving on the marketplace, and they are being bought at record high prices. While it is true that Maricopa County is the single fastest-growing county in the United States (per [the US census](https://www.census.gov/newsroom/press-releases/2022/population-estimates-counties-decrease.html)), I wanted to do an analysis of what other factors, besides population matter when it comes to house prices in a city. The state of Washington has also experienced one of the fastest population growths in the United States over the last decade as well, and in spirit of the seemingly restless real estate market conditions, I wanted to do an analysis of factors that influence house prices. I have created 3 visualizations that attempt to give insight of the Washington real estates market. I want to find out what kind of characteristics influence the price of a house, and of those high-priced houses, what do they seem to have that the others do not.
+
+# Data Retrieval and Description
+The data was found on Kaggle, and the dataset is linked [here](https://www.kaggle.com/datasets/shree1992/housedata). The data is essentially a snapshot of the real estate market taken as of May 2014, so it is cross-sectional data, where all the characteristics of the houses were recorded at one time. The data describes the state of Washington in the United States of America. In my analysis, the most important variables are price, square foot of living, city, and the year the house was built. Also, the dataset only focuses on the houses that were built between 1990 and 2014 (the data does not go passed 2014), and the reason for this is because I wanted to see how the modern houses' prices are influenced by their own characteristics. Additionally, less values in the dataset allow for computational efficiency when dealing with data visualizations. The dependent variable in all 3 of the visualizations is the price, whether it is the average price or the the top 5 most expensive cities to reside in Washington, it will be in relation to price, one way or another.
+
+# Analysis
+
+```{r cars}
+library(tidyverse)
+library(ggthemes)
+library(corrplot)
+
+houses <- read_csv("data.csv")
+# analyzing the categorical variables
+houses %>%
+  keep(is.character) %>%
+  names()
+
+# I want to see the distinct values
+houses %>% 
+  select(country, city,statezip) %>%
+  distinct()
+# USA is the only country, remove row
+houses <- houses %>%
+  select(-country)
+names(houses)
+
+# split the state from the zip code, we will not need the zip code
+houses <- houses %>%
+  separate(statezip, c("state", "zip"), " ")
+
+# i also want to make binary variables into 
+# remove zip from the data
+houses <- houses %>%
+  select(-zip)
+# I want to study houses past the year 2000
+houses <- houses %>% 
+  filter(yr_built > 1990)
+# create a data frame that gets all the mean prices of houses 
+mean_price_yr <- aggregate( price ~ yr_built, houses, FUN = function(x)mean(as.numeric(as.character(x))))
+mean_price_yr
+
+# want to rename the columns to avoid ambiguity
+mean_price_yr <- mean_price_yr %>%
+  rename("year_built" = "yr_built") %>%
+  rename("avg_price" = "price")
+
+
+
+
+plot_1 <- mean_price_yr %>%
+  mutate(annotate1 = ifelse(year_built == 2011, paste("$",round(avg_price),"\n (Lowest Price)"), NA)) %>%
+   mutate(annotate3 = ifelse(year_built == 1992, paste("$",round(avg_price),"\n(Highest Price)"), NA))%>%
+  ggplot(aes(x = year_built,
+             y = avg_price)) +
+   scale_y_continuous(labels = scales::comma,
+                      breaks = seq(0,1500000, 250000))+
+  geom_area(fill = "#69b3a2", alpha = .7) +
+  geom_abline(intercept = 22963123, slope = -11083)+
+  scale_x_continuous(breaks = seq(1990,2014, 2))+
+    geom_label(aes(label= annotate3,
+                 vjust = 1,
+                 hjust = -.0025))+
+  geom_label(aes(label = annotate1,
+                 vjust = 1))+
+  geom_point(size = 2, shape = 21, color = "black", fill ="black")+
+  geom_line()+
+  theme_minimal() +
+  labs(x = "The Year the House Was Built",
+       y= "Average House Price",
+       title = "Newly Built Does Not Necessarily Mean More Expensive",
+       subtitle = "Average House Prices Slightly Decline As The Year it was Built Becomes More Recent")
+ 
+  
+plot_1
+
+```
+
+It is always interesting to see those old Victorian-styled houses in photos around the world, and they always seem to be worth fortunes above other houses due to the historical value. It then made me want to ask, is historical value a real phenomena? It would make sense that it is; after all, old art is worth millions in many cases. As we can see, this visualization shows there seems to be some slight truth to that. The highest prices being more towards the year-built 1990, and the lowest price being in 2011. There is a line drawn from 2 peak points in the line graph (excluding 1991 due to its outlier behavior) that shows a downward trend in price as the year its built becomes more recent. It is an interesting observation to gain, but I wanted to see if the location had anything to do with the price too.
+
+
+
+```{r pressure, echo=FALSE, fig.height=10, fig.width= 10}
+
+# create a dataset of the mean prices per city
+mean_price_city <- aggregate( price ~ city, houses, FUN = function(x)mean(as.numeric(as.character(x))))
+mean_price_city
+# create the plot
+plot_2 <- mean_price_city  %>%
+  select(city, price) %>%
+  mutate(Millions_Plus = ifelse(price > 1000000, "> $1 Million", "< $1 Million")) %>%
+  ggplot(aes(x = price,
+             y = reorder(city, price),
+             fill = Millions_Plus))+
+  geom_col(color = "black") +
+  scale_x_continuous(labels = scales::comma,
+                     breaks = seq(0, 3250000, 500000)) +
+  theme_minimal()+
+  labs(x= "Average House Price",
+       y = "City in the State of Washington",
+       title = "Where is it Most Expensive to Live in Washington?",
+       subtitle = "5 Cities Have House Prices that Average $1 Million +",
+       fill = "Average House Prices Over/Under 1 Million")  +
+  scale_fill_manual(values = c("#69b3a2", "black"))
+  
+
+
+
+plot_2 
+
+
+```
+When you we hear about real estate prices, we always hear the commonality, "location, location, location!". With the cities available in the dataset, I wanted to take advantage to see exactly which cities had the most expensive house prices, on average. As the graph shows, those cities are Medina, Yarrow Point, Mercer Island, Bellevue, and Fall City. These cities all average houses prices of over $1 million dollars, which caught my curiosity even further. I wanted to know if these locations are actually the reason for the high prices, or if, perhaps, they were genuinely bigger. I did not want to completely rule out that location was the only characteristic that made these house more desirable.
+
+```{r fig.height= 12, fig.width= 12}
+# creating the variable based on the top 5 most expensive cities to live in
+houses <- houses %>%
+  mutate(top_5 = ifelse(city == "Medina" | city == "Yarrow Point" | city == "Mercer Island" | city == "Bellevue" | city == "Fall City", "Top 5 Expensive Cities to Live In",
+                        "Everywhere Else"))
+# retreiving the means to put lines through the data
+houses %>%
+  filter(top_5 == "Everywhere Else") %>%
+  select(sqft_living) %>%
+  summary()
+
+houses %>%
+  filter(top_5 != "Everywhere Else") %>%
+  select(sqft_living) %>%
+  summary()
+#Creating new data set for the mean line at the end
+dummy <- houses %>%
+  group_by(top_5) %>%
+  summarize(mean = mean(sqft_living))
+# create the plot
+
+houses %>%
+  select(sqft_living, city, price, bedrooms)%>%
+  filter(price < 5000000) %>%
+  mutate(top_5 = ifelse(city == "Medina" | city == "Yarrow Point" | city == "Mercer Island" | city == "Bellevue" | city == "Fall City", "Top 5 Expensive Cities to Live In",
+                        "Everywhere Else")) %>%
+  mutate(mean_everywhere = ifelse(top_5 == "Everywhere Else",mean(sqft_living, na.rm = T), NA)) %>%
+  mutate(mean_top_5 = ifelse(top_5  != "Everywhere Else", mean(sqft_living, na.rm = T), NA))%>%
+  ggplot(aes(x = sqft_living,
+         fill = top_5)) +
+geom_density(alpha = .6,
+           size = 1) + 
+  scale_y_continuous(labels = scales::comma)+
+  scale_x_continuous(breaks = seq(0,15000, 2500))+
+  scale_fill_manual(values = c("#69b3a2", "black"))+
+  theme_clean()+
+    geom_vline(data = dummy,aes(xintercept = mean, size = .75, color = top_5), show.legend = F)+
+  scale_color_manual(values =c("#69b3a2", "black"))+
+  annotate(x =2430, y = .00040, label = paste("Mean of Non-Top 5","\n2430 Sq.Ft."), geom= "label", vjust = 2)+
+  annotate(x = 4031, .00035, label = paste("Mean of Top 5","\n4031 Sq.Ft."), geom= "label")+
+  labs(title = "More Expensive Living Equates to More Space to Live In",
+       subtitle = "On Average, More Expensive Houses Have More Square Footage in their Home",
+  x = "Living Space Square Footage",
+  y = "Density",
+  fill = "Location")
+
+
+```
+From discovering the 5 cities that have the highest average house prices from the previous visualization, I was able to separate these from the rest of the group. The top 5 most expensive cities were separated form the rest of the cities to show the discrepancy of the square foot of living between the 2 groups. On Average, the houses in the top 5 cities are about 1500 Sq.Ft. larger than their counterparts in all the other cities. This implies that location is a big influence in house prices, but the size of the house also plays into the house price.
+
+## Conclusion
+
+All in all, the results from the visualizations make perfect sense. As expected, house size and location influence price. The year built does have some effect on the price, but it is not as evident. It is worth noting that houses built in the most recent years did seemingly have lower prices on average. I want to be careful and say seemingly because there are several factors that go into the price of a house. Of course, the best way to make the conclusion that house prices increases the year it was built gets older is by having time series data of Washington houses. For example, we would be able to visualize the price of a single house over a 50-year time period, and this would provide us with more definitive information. Nonetheless, we were able to analyze two of 3 factors  that influence house price with ease. Applying this knowledge to the market in Arizona, it begins to make more sense that locations near downtown, like I had mentioned, are the most expensive. Furthermore, the single family houses right next to downtown phoenix have been impossible to find due to the high demand in their location and high demand in the size of the home.
