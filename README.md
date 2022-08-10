@@ -3,4 +3,3 @@ This is Alexander Martinez's Final Project for the Data Visualization Course at 
 
 The Link to the dataset was added. The csv for the data is available as well.
 
-Thank you for a great semester.
